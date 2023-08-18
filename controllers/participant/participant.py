@@ -25,11 +25,18 @@ class Wrestler (Robot):
         self.counter = 0
 
     def run(self):
-        # to load all the motions from the motions folder, we use the MotionLibrary class:
         motion_library = MotionLibrary()
-        # retrieves the WorldInfo.basicTimeTime (ms) from the world file
-        while self.step(self.time_step) != -1:  # mandatory function to make the simulation run
-            motion_library.play('Forwards')
+        while self.step(self.time_step) != -1:
+            # We need to update the internal theta value of the gait manager at every step:
+            t = self.getTime()
+            # self.gait_manager.update_theta()
+            if 0.3 < t < 2:
+                motion_library.play('Forwards')
+            elif t > 2:
+                self.fall_detector.check()
+                motion_library.play('Forwards')
+
+            
 
 
 # create the Robot instance and run main loop
