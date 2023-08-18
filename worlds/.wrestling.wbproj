@@ -8,6 +8,6 @@ orthographicViewHeight: 1
 textFiles: -1
 consoles: Console:All:All
 renderingDevicePerspectives: opponent:CameraBottom;1;0.56875;0;0.832808
-renderingDevicePerspectives: opponent:CameraTop;1;0.56875;0;0
+renderingDevicePerspectives: opponent:CameraTop;0;0.56875;0;0
 renderingDevicePerspectives: participant:CameraBottom;1;0.56875;0;0.832808
-renderingDevicePerspectives: participant:CameraTop;1;0.56875;0;0
+renderingDevicePerspectives: participant:CameraTop;1;0.56875;0.004363;0.10733

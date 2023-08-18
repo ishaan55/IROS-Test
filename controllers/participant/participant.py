@@ -1,134 +1,110 @@
-from controller import Robot
 import sys
 sys.path.append('..')
-# Eve's locate_opponent() is implemented in this module:
-from utils.motion_library import MotionLibrary
-from utils.image_processing import ImageProcessing as IP
-from utils.fall_detection import FallDetection
-from utils.gait_manager import GaitManager
 from utils.camera import Camera
+from utils.fall_detection import FallDetection  # David's fall detection is implemented in this class
+from utils.running_average import RunningAverage
+from utils.image_processing import ImageProcessing as IP
+from utils.finite_state_machine import FiniteStateMachine
+from utils.current_motion_manager import CurrentMotionManager
+from utils.motion_library import MotionLibrary
+from controller import Robot, Motion
+import cv2
 
 
-class Wrestler (Robot):
-    SMALLEST_TURNING_RADIUS = 0.1
-    SAFE_ZONE = 0.75
-    TIME_BEFORE_DIRECTION_CHANGE = 60  # 8000 ms / 40 ms
+class Eve (Robot):
+    NUMBER_OF_DODGE_STEPS = 10
 
     def __init__(self):
         Robot.__init__(self)
+
+        # retrieves the WorldInfo.basicTimeTime (ms) from the world file
         self.time_step = int(self.getBasicTimeStep())
 
         self.library = MotionLibrary()
+        self.library.add('Cust', './Cust.motion', loop=True)
+        self.library.add('Shove', './Shove.motion', loop=True)
+
+        self.leds = {
+            'right': self.getDevice('Face/Led/Right'),
+            'left':  self.getDevice('Face/Led/Left')
+        }
+
+        self.fsm = FiniteStateMachine(
+            states=['CHOOSE_ACTION', 'BLOCKING_MOTION'],
+            initial_state='CHOOSE_ACTION',
+            actions={
+                'CHOOSE_ACTION': self.choose_action,
+                'BLOCKING_MOTION': self.pending
+            }
+        )
+
         self.camera = Camera(self)
+
         self.fall_detector = FallDetection(self.time_step, self)
-        self.gait_manager = GaitManager(self, self.time_step)
-        self.heading_angle = 3.14 / 2
-        # Time before changing direction to stop the robot from falling off the ring
+        self.current_motion = CurrentMotionManager()
+        # load motion files
+        self.motions = {
+            'SideStepLeft': Motion('../motions/SideStepLeftLoop.motion'),
+            'SideStepRight': Motion('../motions/SideStepRightLoop.motion'),
+            'TurnRight': Motion('../motions/TurnRight20.motion'),
+            'TurnLeft': Motion('../motions/TurnLeft20.motion'),
+        }
+        self.opponent_position = RunningAverage(dimensions=1)
+        self.dodging_direction = 'left'
         self.counter = 0
 
     def run(self):
+        self.leds['right'].set(0xff0000)  # set the eyes to red
+        self.leds['left'].set(0xff0000)
+
         while self.step(self.time_step) != -1:
-            # We need to update the internal theta value of the gait manager at every step:
-            t = self.getTime()
-            self.gait_manager.update_theta()
-            if 0.3 < t < 2:
-                self.start_sequence()
-            elif t > 2:
-                self.fall_detector.check()
-                self.walk()
-                self.library.play('Cust')
+            self.opponent_position.update_average(
+                self._get_normalized_opponent_horizontal_position())
+            self.fall_detector.check()
+            self.fsm.execute_action()
 
-    def start_sequence(self):
-        """At the beginning of the match, the robot walks forwards to move away from the edges."""
-        self.gait_manager.command_to_motors(heading_angle=0)
+    def choose_action(self):
+        if self.opponent_position.average < -0.4:
+            self.current_motion.set(self.motions['TurnLeft'])
+            self.library.play('Forwards')
+            self.library.play('Cust')
+        elif self.opponent_position.average > 0.4:
+            self.current_motion.set(self.motions['TurnRight'])
+            self.library.play('Forwards')
+            self.library.play('Cust')
+        else:
+            # dodging by alternating between left and right side steps to avoid easily falling off the ring
+            if self.dodging_direction == 'left':
+                if self.counter < self.NUMBER_OF_DODGE_STEPS:
+                    self.current_motion.set(self.motions['SideStepLeft'])
+                    self.counter += 1
+                else:
+                    self.dodging_direction = 'right'
+            elif self.dodging_direction == 'right':
+                if self.counter > 0:
+                    self.current_motion.set(self.motions['SideStepRight'])
+                    self.counter -= 1
+                else:
+                    self.dodging_direction = 'left'
+            else:
+                return
+        self.fsm.transition_to('BLOCKING_MOTION')
 
-    def walk(self):
-        """Dodge the opponent robot by taking side steps."""
-        normalized_x = self._get_normalized_opponent_x()
-        # We set the desired radius such that the robot walks towards the opponent.
-        # If the opponent is close to the middle, the robot walks straight.
-        desired_radius = (self.SMALLEST_TURNING_RADIUS / normalized_x) if abs(normalized_x) > 1e-3 else None
-        # TODO: position estimation so that if the robot is close to the edge, it switches dodging direction
-        if self.counter > self.TIME_BEFORE_DIRECTION_CHANGE:
-            self.heading_angle = - self.heading_angle
-            self.counter = 0
-        self.counter += 1
-        self.gait_manager.command_to_motors(desired_radius=desired_radius, heading_angle=self.heading_angle)
+    def pending(self):
+        # waits for the current motion to finish before doing anything else
+        if self.current_motion.is_over():
+            self.fsm.transition_to('CHOOSE_ACTION')
 
-    def _get_normalized_opponent_x(self):
-        """Locate the opponent in the image and return its horizontal position in the range [-1, 1]."""
+    def _get_normalized_opponent_horizontal_position(self):
+        """Returns the horizontal position of the opponent in the image, normalized to [-1, 1]
+            and sends an annotated image to the robot window."""
         img = self.camera.get_image()
-        _, _, horizontal_coordinate = IP.locate_opponent(img)
-        if horizontal_coordinate is None:
+        _, _, horizontal = IP.locate_opponent(img)
+
+        if horizontal is None:
             return 0
-        return horizontal_coordinate * 2 / img.shape[1] - 1
-    
+        return horizontal * 2 / img.shape[1] - 1
+
 # create the Robot instance and run main loop
-wrestler = Wrestler()
+wrestler = Eve()
 wrestler.run()
-
-# """Minimalist controller example for the Robot Wrestling Tournament.
-#    Demonstrates how to play a simple motion file."""
-
-# from controller import Robot
-# import sys
-
-# # We provide a set of utilities to help you with the development of your controller. You can find them in the utils folder.
-# # If you want to see a list of examples that use them, you can go to https://github.com/cyberbotics/wrestling#demo-robot-controllers
-# sys.path.append('..')
-# from utils.motion_library import MotionLibrary
-# from utils.image_processing import ImageProcessing as IP
-# from utils.fall_detection import FallDetection
-# # from utils.gait_manager import GaitManager
-# from utils.camera import Camera
-
-
-# class Wrestler (Robot):
-#     SMALLEST_TURNING_RADIUS = 0.1 #0.1
-#     SAFE_ZONE = 0.75
-#     TIME_BEFORE_DIRECTION_CHANGE = 60   # 80
-#     k=0
-#     is_bot_visible = True
-
-#     def __init__(self):
-#         Robot.__init__(self)
-#         self.fall = Falsed = 0
-        
-#         self.time_step = int(self.getBasicTimeStep())
-#         self.library = MotionLibrary()
-
-#         self.camera = Camera(self)
-#         # self.camera2 = Camera2(self)
-#         self.fall_detector = FallDetection(self.time_step, self)
-#         # self.gait_manager = GaitManager(self, self.time_step)
-#         self.heading_angle = 3.14 / 2
-#         self.counter = 0
-
-#     def run(self):
-
-#         while self.step(self.time_step) != -1:
-#             # We need to update the internal theta value of the gait manager at every step:
-#             t = self.getTime()
-#             if(self.fall_detector.detect_fall()): 
-#                 self.fall = True
-#             # self.gait_manager.update_theta()
-#             if 0.3 < t < 2:
-#                 self.library.play('Forwards')
-#             elif t > 2:
-#                 self.fall_detector.check()
-
-#                 self.library.play('Forwards')
-#                 self.library.play('Cust')
-
-#         def _get_normalized_opponent_x(self):
-# #         """Locate the opponent in the image and return its horizontal position in the range [-1, 1]."""
-#             img = self.camera.get_image()
-#             _, _, horizontal_coordinate = IP.locate_opponent(img)
-#             if horizontal_coordinate is None:
-#                 return 0
-#             return horizontal_coordinate * 2 / img.shape[1] - 1
-
-
-# # create the Robot instance and run main loop
-# wrestler = Wrestler()
-# wrestler.run()
