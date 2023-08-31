@@ -114,8 +114,8 @@ class Sultaan (Robot):
                             # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
                             # continue
                             # print('p')
-                            self.library.play('TurnLeft40')
-                            # self.library.play('TurnLeft20')
+                            self.library.play('TurnLeft60')
+                            self.library.play('Cust')
                     else:
                         #self.yolo()
                         self.walk()
