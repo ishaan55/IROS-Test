@@ -62,6 +62,7 @@ class ImageProcessing():
             # we get its centroid for an approximate opponent location
             vertical_coordinate, horizontal_coordinate = cls.get_contour_centroid(largest_contour)
             return largest_contour, vertical_coordinate, horizontal_coordinate
+            # return largest_contour
         else:
             # if no contour is found, we return None
             return None, None, None

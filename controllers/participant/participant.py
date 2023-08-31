@@ -102,20 +102,21 @@ class Sultaan (Robot):
                 if(not self.fall):
                     #print('t_before_yolo: {:.6f}'.format(round(t, 6)))
                     
-                    self.walk()
+                    # self.walk()
                     d, floor = self.getRedLineDistance()
+                    l = self._get_normalized_opponent_x(1) 
+                    self.library.play('Cust')
                     if d == 1:
                     # print("boundary overflow")
                     #prevD = d
                     # self.heading_angle = 3.14 / 2
                         #     self.gait_manager.command_to_motors(heading_angle=0)
                         # else:
-                        if floor not in ['left', 'right', -1]:
+                        if floor not in ['left', 'right', -1] or cv2.contourArea(l) < 250:
                             # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
                             # continue
                             # print('p')
                             self.library.play('TurnLeft60')
-                            self.library.play('Cust')
                     else:
                         #self.yolo()
                         self.walk()
@@ -244,7 +245,6 @@ class Sultaan (Robot):
     #         time.sleep(0.1)
     
     
-    
   
     def start_sequence(self):
         """At the beginning of the match, the robot walks forwards to move away from the edges."""
@@ -253,7 +253,7 @@ class Sultaan (Robot):
     
     
     def walk(self):
-        normalized_x = self._get_normalized_opponent_x() 
+        normalized_x,_ = self._get_normalized_opponent_x() 
         desired_radius = (self.SMALLEST_TURNING_RADIUS / normalized_x) if abs(normalized_x) > 1e-3 else None
         if(normalized_x > 0): 
             self.heading_angle = 3.14/4
@@ -267,13 +267,15 @@ class Sultaan (Robot):
         self.gait_manager.command_to_motors(desired_radius=desired_radius, heading_angle=self.heading_angle)
         # self.library.play('Cust')
 
-    def _get_normalized_opponent_x(self):
+    def _get_normalized_opponent_x(self, type=0):
         """Locate the opponent in the image and return its horizontal position in the range [-1, 1]."""
         img = self.camera.get_image()
-        _, _, horizontal_coordinate = IP.locate_opponent(img)
+        l, _, horizontal_coordinate = IP.locate_opponent(img)
         if horizontal_coordinate is None:
             return 0
-        return horizontal_coordinate * 2 / img.shape[1] - 1
+        if type:
+            return l
+        return horizontal_coordinate * 2 / img.shape[1] - 1, l
 
 # create the Robot instance and run main loop
 wrestler = Sultaan()
