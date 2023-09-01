@@ -106,7 +106,7 @@ class Sultaan (Robot):
                     d, floor = self.getRedLineDistance()
                     l = self._get_normalized_opponent_x(1) 
                     self.library.play('Cust')
-                    if d == 1:
+                    if d == 1 and t < 7:
                     # print("boundary overflow")
                     #prevD = d
                     # self.heading_angle = 3.14 / 2
@@ -119,7 +119,7 @@ class Sultaan (Robot):
                             self.library.play('TurnLeft60')
                     else:
                         #self.yolo()
-                        if t < 6:
+                        if t < 7:
                             self.walk()
     
     def getFloorDirection(self,image):
