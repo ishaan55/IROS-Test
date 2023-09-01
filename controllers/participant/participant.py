@@ -94,7 +94,7 @@ class Sultaan (Robot):
 
             if 0.3 < t < 2:
                 self.start_sequence()
-            elif 2 < t < 7:
+            elif 2 < t:
                 
                 self.fall
                 self.fall_detector.check()
@@ -119,7 +119,8 @@ class Sultaan (Robot):
                             self.library.play('TurnLeft60')
                     else:
                         #self.yolo()
-                        self.walk()
+                        if t < 6:
+                            self.walk()
     
     def getFloorDirection(self,image):
         THRESHOLD = 45
