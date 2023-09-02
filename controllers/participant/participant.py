@@ -64,20 +64,26 @@ class Sultaan (Robot):
         }
         
         self.HeadPitch = self.getDevice("HeadPitch")
-       
+        self.direction = ["TurnRight60","TurnLeft60"]
         #self.library.play('Cust')
         # for locking motor
+
+    def turn(self):
+        self.library.play(self.direction[-1])
+        self.library.play(self.direction[-1])
+        if len(self.direction) > 1: self.direction.pop()
        
     def run(self):
-        k=0
-        time = 7
-        counter = 0
+        
+        time = 22
+        counter = 1
         # yolo_thread = threading.Thread(target=self.run_yolo)
         # yolo_thread.start()
         while self.step(self.time_step) != -1:
             # We need to update the internal theta value of the gait manager at every step:
             #self.HeadPitch.setPosition(0)
             t = self.getTime()
+            print(t)
             self.leds['rightf'].set(0xff0000)
             self.leds['leftf'].set(0xff0000)
             self.leds['righte'].set(0xff0000)
@@ -92,15 +98,15 @@ class Sultaan (Robot):
             if(self.fall_detector.detect_fall()): 
                 self.fall = True
 
-            if t > time:
-                self.leds['rightf'].set(0x000000)
-                self.leds['leftf'].set(0x000000)
-                if (not self.fall):
-                    self.library.play("TurnLeft60")
+            # if t > time:
+            #     self.leds['rightf'].set(0x000000)
+            #     self.leds['leftf'].set(0x000000)
+            #     if (not self.fall):
+            #         self.library.play("TurnLeft60")
 
-            if 0.3 < t < 2:
+            if 0.3 < t < 1:
                 self.start_sequence()
-            elif 2 < t:
+            elif 1 < t:
                 
                 self.fall
                 self.fall_detector.check()
@@ -109,24 +115,41 @@ class Sultaan (Robot):
                     #print('t_before_yolo: {:.6f}'.format(round(t, 6)))
                     
                     # self.walk()
-                    d, floor = self.getRedLineDistance()
-                    l = self._get_normalized_opponent_x(1) 
-                    self.library.play('Cust')
-                    if d == 1 and t < time:
+                    # d, floor = self.getRedLineDistance()
+                    # l = self._get_normalized_opponent_x(1) 
+                    
+                    if 1 < t < 3:
+                        self.turn()
+                    elif 15 > t:
+                        self.library.play('Forwards50')
+                    elif 17 < t < 22:
+                        self.turn()
+                        # self.library.play("TurnRight20")
+                    elif 24 < t < 42:
+                        self.library.play('Forwards50')
+                    elif 44 < t < 49:
+                        self.turn()
+                    elif 53 < t < 70:
+                        self.library.play('Forwards50')
+
+                        # elif t > time+1:
+                        #     time += 10
+                    # self.library.play('Cust')
+                    # if d == 1 and t < time:
                     # print("boundary overflow")
                     #prevD = d
                     # self.heading_angle = 3.14 / 2
                         #     self.gait_manager.command_to_motors(heading_angle=0)
                         # else:
-                        if floor not in ['left', 'right', -1] or cv2.contourArea(l) < 250:
-                            # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
-                            # continue
-                            # print('p')
-                            self.library.play('TurnLeft60')
-                    else:
-                        #self.yolo()
-                        if t < time:
-                            self.walk()
+                        # if floor not in ['left', 'right', -1] or cv2.contourArea(l) < 250:
+                        #     # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
+                        #     # continue
+                        #     # print('p')
+                            # self.library.play('TurnLeft60')
+                    # else:
+                    #     #self.yolo()
+                    #     if t < time:
+                    #         self.walk()
     
     def getFloorDirection(self,image):
         THRESHOLD = 45
