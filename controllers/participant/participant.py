@@ -95,6 +95,8 @@ class Sultaan (Robot):
             if t > time:
                 self.leds['rightf'].set(0x000000)
                 self.leds['leftf'].set(0x000000)
+                if (not self.fall):
+                    self.library.play("TurnLeft60")
 
             if 0.3 < t < 2:
                 self.start_sequence()
