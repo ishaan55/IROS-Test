@@ -70,7 +70,7 @@ class Sultaan (Robot):
        
     def run(self):
         k=0
-        
+        time = 7
         counter = 0
         # yolo_thread = threading.Thread(target=self.run_yolo)
         # yolo_thread.start()
@@ -92,6 +92,10 @@ class Sultaan (Robot):
             if(self.fall_detector.detect_fall()): 
                 self.fall = True
 
+            if t > time:
+                self.leds['rightf'].set(0x000000)
+                self.leds['leftf'].set(0x000000)
+
             if 0.3 < t < 2:
                 self.start_sequence()
             elif 2 < t:
@@ -106,7 +110,7 @@ class Sultaan (Robot):
                     d, floor = self.getRedLineDistance()
                     l = self._get_normalized_opponent_x(1) 
                     self.library.play('Cust')
-                    if d == 1 and t < 7:
+                    if d == 1 and t < time:
                     # print("boundary overflow")
                     #prevD = d
                     # self.heading_angle = 3.14 / 2
@@ -119,7 +123,7 @@ class Sultaan (Robot):
                             self.library.play('TurnLeft60')
                     else:
                         #self.yolo()
-                        if t < 7:
+                        if t < time:
                             self.walk()
     
     def getFloorDirection(self,image):
