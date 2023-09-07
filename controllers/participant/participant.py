@@ -118,19 +118,19 @@ class Sultaan (Robot):
                     # d, floor = self.getRedLineDistance()
                     # l = self._get_normalized_opponent_x(1) 
                     
-                    if 1 < t < 3:
+                    if 1 < t < 6:
                         self.turn()
-                    elif 15 > t:
+                    elif 18 > t:
                         self.library.play('Forwards50')
-                    elif 17 < t < 22:
+                    elif 20 < t < 25:
                         self.turn()
                         # self.library.play("TurnRight20")
-                    elif 24 < t < 42:
+                    elif 27 < t < 45:
                         self.library.play('Forwards50')
-                    elif 44 < t < 49:
-                        self.turn()
-                    elif 53 < t < 70:
-                        self.library.play('Forwards50')
+                    # elif 47 < t < 52:
+                    #     self.turn()
+                    # elif 55 < t < 70:
+                    #     self.library.play('Forwards50')
 
                         # elif t > time+1:
                         #     time += 10
