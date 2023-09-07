@@ -64,7 +64,7 @@ class Sultaan (Robot):
         }
         
         self.HeadPitch = self.getDevice("HeadPitch")
-        self.direction = ["TurnRight60","TurnLeft60"]
+        self.direction = ["TurnLeft60","TurnRight60"]
         #self.library.play('Cust')
         # for locking motor
 
