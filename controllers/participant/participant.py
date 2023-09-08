@@ -94,11 +94,13 @@ class Sultaan (Robot):
 
             if 0.3 < t < 2:
                 self.start_sequence()
-            elif t > 2:
+            elif 3 < t < 5:
+                self.library.play('TurnLeft60')
+            elif t > 5:
                 
                 self.fall
                 self.fall_detector.check()
-                
+
                 if(not self.fall):
                     #print('t_before_yolo: {:.6f}'.format(round(t, 6)))
                     
@@ -112,11 +114,12 @@ class Sultaan (Robot):
                     # self.heading_angle = 3.14 / 2
                         #     self.gait_manager.command_to_motors(heading_angle=0)
                         # else:
-                        if floor not in ['left', 'right', -1] or cv2.contourArea(l) < 250:
+                        if floor not in ['left', 'right', -1]:
                             # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
                             # continue
                             # print('p')
                             self.library.play('TurnLeft60')
+                            # self.gait_manager.command_to_motors(desired_radius=0, heading_angle=-self.heading_angle)
                     else:
                         #self.yolo()
                         self.walk()
@@ -139,6 +142,8 @@ class Sultaan (Robot):
             return 'left'
         else:
             return -1
+        
+    
 
     
     def getRedLineDistance(self):          #we use bottom oriented image for edge detection
@@ -272,7 +277,7 @@ class Sultaan (Robot):
         img = self.camera.get_image()
         l, _, horizontal_coordinate = IP.locate_opponent(img)
         if horizontal_coordinate is None:
-            return 0
+            return 0,None
         if type:
             return l
         return horizontal_coordinate * 2 / img.shape[1] - 1, l

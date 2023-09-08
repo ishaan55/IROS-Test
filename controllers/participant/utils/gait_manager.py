@@ -38,6 +38,9 @@ class GaitManager():
             position_sensor.enable(time_step)
             self.R_leg_motors.append(motor)
 
+    def update_radius_calibration(self, r):
+        self.gait_generator.radius_calibration = r
+
     def update_theta(self):
         self.gait_generator.update_theta()
 
