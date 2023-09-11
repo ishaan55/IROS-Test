@@ -1,7 +1,7 @@
 {
   "name": "Josbotics",
   "description": "Description of my robot controller program.",
-  "team": ["Ishaan Gupta", "Name of Team Member 2", "etc."],
+  "team": ["Ishaan Gupta"],
   "organization": "My Company or University",
   "country": "IN",
   "programming": "Python"
