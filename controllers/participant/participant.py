@@ -1,3 +1,21 @@
+# Copyright 1996-2023 Cyberbotics Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Minimalist controller example for the Robot Wrestling Tournament.
+   Demonstrates how to play a simple motion file."""
+
+
 from controller import Robot
 import sys
 sys.path.append('..')
@@ -10,7 +28,7 @@ from utils.gait_manager import GaitManager
 from utils.camera import Camera
 from utils.camera2 import Camera2
 from utils.finite_state_machine import FiniteStateMachine
-from utils.ellipsoid_gait_generator import EllipsoidGaitGenerator
+from utils.ellipsoid_gait_generator import EllipsoidGaitGenerator as EGG 
 
 
 # import torch
@@ -33,14 +51,15 @@ import threading
 
 
 
-
 class Sultaan (Robot):
     SMALLEST_TURNING_RADIUS = 0.1 #0.1
     SAFE_ZONE = 0.75
     TIME_BEFORE_DIRECTION_CHANGE = 60   # 80
     k=0
     is_bot_visible = True
-    
+    # Create an instance of EllipsoidGaitGenerator
+    # Modify the value of radius_calibration
+    # Replace 0.5 with your desired value (gait_generator.radius_calibration = 0.5)
     
     def __init__(self):
         Robot.__init__(self)
@@ -48,13 +67,14 @@ class Sultaan (Robot):
         
         self.time_step = int(self.getBasicTimeStep())
         self.library = MotionLibrary()
+
         self.camera = Camera(self)
         self.camera2 = Camera2(self)
         self.fall_detector = FallDetection(self.time_step, self)
         self.gait_manager = GaitManager(self, self.time_step)
         self.heading_angle = 3.14 / 2
         self.counter = 0
-        self.library.add('Cust', './Motions/Shove3.motion')
+        #self.library.add('Anglehandupdown', './First.motion', loop = True)
         self.leds = {
             'rightf': self.getDevice('Face/Led/Right'), 
             'leftf': self.getDevice('Face/Led/Left'), 
@@ -71,7 +91,7 @@ class Sultaan (Robot):
     def run(self):
         k=0
         
-        counter = 0
+        
         # yolo_thread = threading.Thread(target=self.run_yolo)
         # yolo_thread.start()
         while self.step(self.time_step) != -1:
@@ -84,73 +104,211 @@ class Sultaan (Robot):
             self.leds['lefte'].set(0xff0000)
             self.leds['chest'].set(0xff0000)
             self.gait_manager.update_theta()
-            self.getRedLineDistance()
             #x, k, z, yaw = EllipsoidGaitGenerator.compute_leg_position(self, is_left = 'True', desired_radius=1e3, heading_angle=0)
             #print('x=' + str(x))
-
-            self.fall = False
+            
             if(self.fall_detector.detect_fall()): 
                 self.fall = True
-
-            if 0.3 < t < 2:
+            if 0.3 < t < 5:
                 self.start_sequence()
-            elif 3 < t < 5:
-                self.library.play('TurnLeft60')
             elif t > 5:
                 
                 self.fall
                 self.fall_detector.check()
+                p = self.ring_pos()
+                q = self.red_slope()
 
+                if(p == 0):
+                    print("On Ring")
+                else:
+                    if(q == 0):
+                        self.gait_manager.update_radius_calibration(0)
+                        #setting self.radius_callibration = 0 of ellipsoid gait generator for circular motion 
+                    else:
+                        #setting self.radius_callibration = 0.93 of ellipsoid gait generator for normal movement 
+                        self.gait_manager.update_radius_calibration(0.93)   
+                        
+                # elif(p == 1):
+                #     self.library.play('TurnRight60')
+                # elif(p == 2):
+                #     self.library.play('TurnLeft60')
+                # elif(p == 3):
+                #      self.library.play('Forwards')
+                #     # if (y+h/2) < 110:
+                #         # self.library.play('Forwards')  # Move forward
+                #     # else:
+                #         # Take exactly 3 steps (You may need to replace 'TakeSteps' with the appropriate command)
+                #         # for _ in range(1):
+                #             # self.library.play('Forwards')
+                # elif(p == 4):
+                #     self.library.play('TurnLeft40')
+                # elif(p == 5):
+                #     self.library.play('TurnRight40')
+                # elif(p == 6):
+                #     self.library.play('TurnLeft60')
+                    
+            # while
+
+
+
+                
                 if(not self.fall):
                     #print('t_before_yolo: {:.6f}'.format(round(t, 6)))
                     
-                    # self.walk()
-                    d, floor = self.getRedLineDistance()
-                    l = self._get_normalized_opponent_x(1) 
-                    self.library.play('Cust')
+                    self.walk()
+                    d = self.getDistance()
                     if d == 1:
                     # print("boundary overflow")
                     #prevD = d
                     # self.heading_angle = 3.14 / 2
-                        #     self.gait_manager.command_to_motors(heading_angle=0)
-                        # else:
-                        if floor not in ['left', 'right', -1]:
-                            # self.gait_manager.command_to_motors(desired_radius=0.1 ,heading_angle=(3.14)/2)
-                            # continue
-                            # print('p')
-                            self.library.play('TurnLeft60')
-                            # self.gait_manager.command_to_motors(desired_radius=0, heading_angle=-self.heading_angle)
+                        self.library.play('TurnLeft60')
                     else:
                         #self.yolo()
                         self.walk()
-    
-    def getFloorDirection(self,image):
-        THRESHOLD = 45
-        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        m,n = image_gray.shape
-        top_row = np.mean(image_gray[0])
-        bottom_row = np.mean(image_gray[image_gray.shape[0]-1])
-        left_column = np.mean(image_gray[:,0])
-        right_column = np.mean(image_gray[:,image_gray.shape[1]-1])
-        if top_row - bottom_row > THRESHOLD:
-            return 'bottom'
-        elif bottom_row - top_row > THRESHOLD:
-            return 'top'
-        elif left_column - right_column > THRESHOLD:
-            return 'right'
-        elif right_column - left_column > THRESHOLD:
-            return 'left'
-        else:
-            return -1
-        
-    
 
-    
-    def getRedLineDistance(self):          #we use bottom oriented image for edge detection
+
+    def ring_pos(self):
+        image = self.camera2.get_image()
+        hsv_image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        img1 = hsv_image.copy()
+        img2 = hsv_image.copy()
+        m = 0
+        # colorr_low = 168  
+        # colorr_high = 209
+        # colorf_low = 70  
+        # colorf_high = 102
+        # lower_red = (193, 62, 35)
+        # upper_red = (205, 107, 65)
+        colorr_low = np.array([193,62,35])
+        colorr_high = np.array([205,107,65])
+        colorf_low = np.array([83,62,42])
+        colorf_high = np.array([154,110,70])
+        mask1 = cv2.inRange(img1, colorr_low, colorr_high)
+        mask2 = cv2.inRange(img2, colorf_low, colorf_high)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        mask1 = cv2.morphologyEx(mask1, cv2.MORPH_OPEN, kernel)
+        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, kernel)
+        res1 = cv2.bitwise_and(img1,img1,mask1)
+        res2 =  cv2.bitwise_and(img2,img2,mask2)
+        gray1 = cv2.cvtColor(res1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(res2, cv2.COLOR_BGR2GRAY)
+        contours1, _ = cv2.findContours(gray1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours2, _ = cv2.findContours(gray2.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours1 = sorted(contours1, key=cv2.contourArea, reverse=True)
+        contours2 = sorted(contours2, key=cv2.contourArea, reverse=True)
+        # Check if contours2 is non-zero before calculating its centroid
+        cy1, cx1 = None, None
+        if len(contours1) > 0:
+            contours1 = sorted(contours1, key=cv2.contourArea, reverse=True)
+            cy1, cx1 = IP.get_contour_centroid(contours1[0])
+        # Check if contours2 is non-zero before calculating its centroid
+        cy2, cx2 = None, None
+        if len(contours2) > 0:
+            contours2 = sorted(contours2, key=cv2.contourArea, reverse=True)
+            cy2, cx2 = IP.get_contour_centroid(contours2[0])
+
+        # mask_red = cv2.inRange(hsv_image , lower_red , upper_red)
+        # res = cv2.bitwise_and(hsv_image, hsv_image, mask_red)
+        # gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+        # edged = cv2.Canny(gray, 20, 100)
+        # contours_red , _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+        # # Calculate slope of the bounding rectangle
+        # if len(contours_red)>0:
+        #     x, y, w, h = cv2.boundingRect(contours[0])
+        #     slope = h / w
+
+        # cy3, cx3 = None, None
+        # if len(contours_red) > 0:
+        #     contours_red = sorted(contours_red, key=cv2.contourArea, reverse=True)
+        #     cy3, cx3 = IP.get_contour_centroid(contours_red[0])
+
+
+
+        # Continue with your code using cy3 and cx3, knowing that they are either valid centroids or None if contours_red is empty.
+
+        # Assuming you have already calculated cy1, cx1, cy2, and cx2
+
+        if len(contours1) > 0 and len(contours2) > 0:
+            if cy1 > cy2:
+                return 0
+            else:
+                return 1
+        #     elif (cx1 > 108 and cy1 <40):
+        #         return 1
+        #     elif (cx1 < 50 and cy1 < 40):
+        #         return 2
+        #     elif (slope <= 0.3):
+        #         return 3
+        #     elif (slope > 0.3 and cx1 < 80):
+        #         return 4
+        #     elif (slope >= 0.3 and cx1 > 80):
+        #         return 5
+        #     elif (cx1 == 0 and cy1 == 0):
+        #         return 6
+        # if len(contours1)==0:
+        #      return 0
+    # problem abhi bhi hai F
+
+    # Handle the case when either or
+
+    def red_slope(self):
+        image = self.camera2.get_image()
+        hsv_image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        # lower_red = np.array([193, 62, 35])
+        # upper_red = np.array([205, 107, 65])
+        # mask_red = cv2.inRange(hsv_image , lower_red , upper_red)
+        # res = cv2.bitwise_and(hsv_image, hsv_image, mask_red)
+        # gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+        # edged = cv2.Canny(gray, 20, 100)
+        # contours_red , _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+        # # Calculate slope of the bounding rectangle
+        # if len(contours_red)>0:
+        #     x, y, w, h = cv2.boundingRect(contours[0])
+        #     slope = h / w
+
+        # if(slope>0.30):
+        #     return 0
+        # else:
+        #     return 1 
+        lower_red = np.array([0, 100, 100])
+        upper_red = np.array([10, 255, 255])
+
+        red_mask = cv2.inRange(hsv_image, lower_red, upper_red)
+
+        contours_red, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+
+        # for contour in contours:
+        #     area = cv2.contourArea(contour)
+
+        #     if area > 2500:
+        #         x, y, w, h = cv2.boundingRect(contour)
+        #         slope = h / w
+
+        #         if(slope<0.3):
+        #             return 1
+        #         else:
+        #             return 0     
+        # Initialize the rotated bounding rectangle
+        rotated_rect = None
+
+# Loop through the detected contours
+        for contour in contours:
+    # Fit a rotated bounding rectangle around the contour
+            rotated_rect = cv2.minAreaRect(contour)
+            if(rotated_rect[2]>75 and rotated_rect[2]<105):
+                return 1
+            else:
+                return 0       
+                 
+
+
+    def getDistance(self):          #we use bottom oriented image for edge detection
         import cv2
         import numpy as np
         image = self.camera2.get_image()
-        floor = self.getFloorDirection(image)
         m = 0
         hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         lower_red = (0, 50, 50)
@@ -160,6 +318,13 @@ class Sultaan (Robot):
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
        
+        # print('len(image.getbands()):',len(image.getbands()))
+        # image_shape = image.shape
+
+# Get the number of channels from the shape tuple
+        # num_channels = image_shape[-1]
+
+        # print('num_channels:', num_channels)
         
         rgb_image = image[:, :, :3]
 
@@ -168,14 +333,19 @@ class Sultaan (Robot):
 
 # Get the number of channels from the shape tuple
         num_channels = rgb_image_shape[-1]
-        # print('num_channels:', num_channels)
+        print('num_channels:', num_channels)
+        
+        
+        
+        
+        
         
         
         if len(contours) > 0:
             largest_contour = max(contours, key=cv2.contourArea)
             rect = cv2.minAreaRect(largest_contour)
             box = cv2.boxPoints(rect)
-            box = np.intp(box)
+            box = np.int0(box)
 
             image_height, image_width = image.shape[:2]
             bottom_threshold = 0.92 * image_height
@@ -183,71 +353,68 @@ class Sultaan (Robot):
             for point in box:
                 x, y = point
                 if y >= bottom_threshold:
-                    pass
-                    # print("Point:", point)
-                    # print("Bottom Threshold:", bottom_threshold)
+                    print("Point:", point)
+                    print("Bottom Threshold:", bottom_threshold)
 
             points_below_threshold = sum(point[1] >= bottom_threshold for point in box)
             percentage_below_threshold = points_below_threshold / len(box)
             
             #if any(point[1] >= bottom_threshold for point in box):
             cv2.drawContours(image, [box], 0, (0, 255, 0), 2)
-            # self.camera2.send_to_robot_window(image)
-            # print('percentage_below_threshold: ', percentage_below_threshold)
+            print('percentage_below_threshold: ', percentage_below_threshold)
             if percentage_below_threshold >= 0.5:    #print('point[1]: ', point)
                 #print('bottom_threshold: ', bottom_threshold)
-                if cv2.contourArea(largest_contour) >= 200:
-                    # print("Turn to avoid falling!")
+                if(cv2.contourArea(largest_contour) >= 200 and self.ring_pos()==0):
+                    print("Turn to avoid falling!")
+                    
                     m=1
                 
                 else:
-                    pass
-                    # print("No need to turn, keep moving.")
+                    print("No need to turn, keep moving.")
             else:
-                pass
-                # print("No need to turn, keep moving.")
+                print("No need to turn, keep moving.")
         else:
-            pass
-            # print("No red contours found, keep moving.")
-        return m, floor
+            print("No red contours found, keep moving.")
+        return m
 
     
     
     # def run_yolo(self):
-    #     time.sleep(2)
-    #     while True:
-    #         # Capture the image from the camera
-    #         image = self.camera.get_image()
+        # time.sleep(2)
+        # while True:
+            #Capture the image from the camera
+            # image = self.camera.get_image()
 
-    #         # Remove alpha channel if present
-    #         if image.shape[2] == 4:
-    #             image = image[:, :, :3]
+            #Remove alpha channel if present
+            # if image.shape[2] == 4:
+                # image = image[:, :, :3]
 
-    #         # Convert image to RGB format
-    #         img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            #Convert image to RGB format
+            # img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    #         # Perform object detection
-    #         results = model([img])
+            #Perform object detection
+            # results = model([img])
 
-    #         # Display the detections
-    #         results.print()
+            #Display the detections
+            # results.print()
 
-    #         # Access individual detection attributes (e.g., bounding boxes, labels)
-    #         boxes = results.xyxy[0].numpy()
-    #         labels = results.names[0]
+            #Access individual detection attributes (e.g., bounding boxes, labels)
+            # boxes = results.xyxy[0].numpy()
+            # labels = results.names[0]
 
-    #         # Process the detection results as needed
-    #         if len(boxes) == 0:
-    #             is_bot_visible = False
-    #             self.library.play('TurnLeft60')
-    #         else:
-    #             is_bot_visible = True
+            #Process the detection results as needed
+            #if len(boxes) == 0:
+             #   is_bot_visible = False
+              #  self.library.play('TurnLeft60')
+            #else:
+             #   is_bot_visible = True
                 
 
-    #         # You can perform further actions based on the detection results
+            #You can perform further actions based on the detection results
 
-    #         # Sleep for a short duration to avoid excessive CPU usage
-    #         time.sleep(0.1)
+            #Sleep for a short duration to avoid excessive CPU usage
+            # time.sleep(0.1)
+    
     
     
   
@@ -258,7 +425,7 @@ class Sultaan (Robot):
     
     
     def walk(self):
-        normalized_x,_ = self._get_normalized_opponent_x() 
+        normalized_x = self._get_normalized_opponent_x() 
         desired_radius = (self.SMALLEST_TURNING_RADIUS / normalized_x) if abs(normalized_x) > 1e-3 else None
         if(normalized_x > 0): 
             self.heading_angle = 3.14/4
@@ -270,19 +437,16 @@ class Sultaan (Robot):
             return  
         self.counter += 1
         self.gait_manager.command_to_motors(desired_radius=desired_radius, heading_angle=self.heading_angle)
-        # self.library.play('Cust')
+        #self.library.play('Khushi')
 
-    def _get_normalized_opponent_x(self, type=0):
+    def _get_normalized_opponent_x(self):
         """Locate the opponent in the image and return its horizontal position in the range [-1, 1]."""
         img = self.camera.get_image()
-        l, _, horizontal_coordinate = IP.locate_opponent(img)
+        _, _, horizontal_coordinate = IP.locate_opponent(img)
         if horizontal_coordinate is None:
-            return 0,None
-        if type:
-            return l
-        return horizontal_coordinate * 2 / img.shape[1] - 1, l
+            return 0
+        return horizontal_coordinate * 2 / img.shape[1] - 1
 
 # create the Robot instance and run main loop
 wrestler = Sultaan()
 wrestler.run()
-
