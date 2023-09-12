@@ -54,7 +54,7 @@ class Sultaan (Robot):
         self.gait_manager = GaitManager(self, self.time_step)
         self.heading_angle = 3.14 / 2
         self.counter = 0
-        self.library.add('Cust', './Motions/Shove3.motion')
+        self.library.add('Cust', './Motions/Shove.motion')
         self.leds = {
             'rightf': self.getDevice('Face/Led/Right'), 
             'leftf': self.getDevice('Face/Led/Left'), 
@@ -121,7 +121,6 @@ class Sultaan (Robot):
                             self.library.play('TurnLeft60')
                             # self.gait_manager.command_to_motors(desired_radius=0, heading_angle=-self.heading_angle)
                     else:
-                        #self.yolo()
                         self.walk()
     
     def getFloorDirection(self,image):
@@ -143,7 +142,141 @@ class Sultaan (Robot):
         else:
             return -1
         
-    
+    def ring_pos(self):
+        image = self.camera2.get_image()
+        hsv_image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        img1 = hsv_image.copy()
+        img2 = hsv_image.copy()
+        m = 0
+        # colorr_low = 168  
+        # colorr_high = 209
+        # colorf_low = 70  
+        # colorf_high = 102
+        # lower_red = (193, 62, 35)
+        # upper_red = (205, 107, 65)
+        colorr_low = np.array([193,62,35])
+        colorr_high = np.array([205,107,65])
+        colorf_low = np.array([83,62,42])
+        colorf_high = np.array([154,110,70])
+        mask1 = cv2.inRange(img1, colorr_low, colorr_high)
+        mask2 = cv2.inRange(img2, colorf_low, colorf_high)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        mask1 = cv2.morphologyEx(mask1, cv2.MORPH_OPEN, kernel)
+        mask2 = cv2.morphologyEx(mask2, cv2.MORPH_OPEN, kernel)
+        res1 = cv2.bitwise_and(img1,img1,mask1)
+        res2 =  cv2.bitwise_and(img2,img2,mask2)
+        gray1 = cv2.cvtColor(res1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(res2, cv2.COLOR_BGR2GRAY)
+        contours1, _ = cv2.findContours(gray1.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours2, _ = cv2.findContours(gray2.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours1 = sorted(contours1, key=cv2.contourArea, reverse=True)
+        contours2 = sorted(contours2, key=cv2.contourArea, reverse=True)
+        # Check if contours2 is non-zero before calculating its centroid
+        cy1, cx1 = None, None
+        if len(contours1) > 0:
+            contours1 = sorted(contours1, key=cv2.contourArea, reverse=True)
+            cy1, cx1 = IP.get_contour_centroid(contours1[0])
+        # Check if contours2 is non-zero before calculating its centroid
+        cy2, cx2 = None, None
+        if len(contours2) > 0:
+            contours2 = sorted(contours2, key=cv2.contourArea, reverse=True)
+            cy2, cx2 = IP.get_contour_centroid(contours2[0])
+
+        # mask_red = cv2.inRange(hsv_image , lower_red , upper_red)
+        # res = cv2.bitwise_and(hsv_image, hsv_image, mask_red)
+        # gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+        # edged = cv2.Canny(gray, 20, 100)
+        # contours_red , _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+        # # Calculate slope of the bounding rectangle
+        # if len(contours_red)>0:
+        #     x, y, w, h = cv2.boundingRect(contours[0])
+        #     slope = h / w
+
+        # cy3, cx3 = None, None
+        # if len(contours_red) > 0:
+        #     contours_red = sorted(contours_red, key=cv2.contourArea, reverse=True)
+        #     cy3, cx3 = IP.get_contour_centroid(contours_red[0])
+
+
+
+        # Continue with your code using cy3 and cx3, knowing that they are either valid centroids or None if contours_red is empty.
+
+        # Assuming you have already calculated cy1, cx1, cy2, and cx2
+
+        if len(contours1) > 0 and len(contours2) > 0:
+            if cy1 > cy2:
+                return 0
+            else:
+                return 1
+        #     elif (cx1 > 108 and cy1 <40):
+        #         return 1
+        #     elif (cx1 < 50 and cy1 < 40):
+        #         return 2
+        #     elif (slope <= 0.3):
+        #         return 3
+        #     elif (slope > 0.3 and cx1 < 80):
+        #         return 4
+        #     elif (slope >= 0.3 and cx1 > 80):
+        #         return 5
+        #     elif (cx1 == 0 and cy1 == 0):
+        #         return 6
+        # if len(contours1)==0:
+        #      return 0
+    # problem abhi bhi hai F
+
+    # Handle the case when either or
+        
+    def red_slope(self):
+        image = self.camera2.get_image()
+        hsv_image = cv2.cvtColor(image,cv2.COLOR_BGR2HSV)
+        # lower_red = np.array([193, 62, 35])
+        # upper_red = np.array([205, 107, 65])
+        # mask_red = cv2.inRange(hsv_image , lower_red , upper_red)
+        # res = cv2.bitwise_and(hsv_image, hsv_image, mask_red)
+        # gray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
+        # edged = cv2.Canny(gray, 20, 100)
+        # contours_red , _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+        # # Calculate slope of the bounding rectangle
+        # if len(contours_red)>0:
+        #     x, y, w, h = cv2.boundingRect(contours[0])
+        #     slope = h / w
+
+        # if(slope>0.30):
+        #     return 0
+        # else:
+        #     return 1 
+        lower_red = np.array([0, 100, 100])
+        upper_red = np.array([10, 255, 255])
+
+        red_mask = cv2.inRange(hsv_image, lower_red, upper_red)
+
+        contours_red, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours_red, key=cv2.contourArea, reverse=True)[:1]
+
+        # for contour in contours:
+        #     area = cv2.contourArea(contour)
+
+        #     if area > 2500:
+        #         x, y, w, h = cv2.boundingRect(contour)
+        #         slope = h / w
+
+        #         if(slope<0.3):
+        #             return 1
+        #         else:
+        #             return 0     
+        # Initialize the rotated bounding rectangle
+        rotated_rect = None
+
+# Loop through the detected contours
+        for contour in contours:
+    # Fit a rotated bounding rectangle around the contour
+            rotated_rect = cv2.minAreaRect(contour)
+            if(rotated_rect[2]>75 and rotated_rect[2]<105):
+                return 1
+            else:
+                return 0 
 
     
     def getRedLineDistance(self):          #we use bottom oriented image for edge detection
